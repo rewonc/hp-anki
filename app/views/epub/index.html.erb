@@ -1,0 +1,105 @@
+
+<h1>Jap and Eng ebook comparisons</h1>
+
+<div class="eng">
+  <% @eng.each_page_on_spine do |page| %>
+    <% ch1 = page.content_document.nokogiri.css('#hp1_ch1') %>
+    <% if ch1.empty? %>
+    <% else %>  
+      <% text = ch1.first.parent.css('p') %>
+      <% pnum = -1 #this is because there are two non text paragraphs at the beginning of ch 1 %> 
+      <% lnum = 1 %>
+        <table>
+          <tr>
+            <th>Item</th>
+            <th>Paragraph No.</th>
+            <th>Line No.</th>
+          </tr>
+          <tr>
+            <td>
+              <% text.each do |p| %>
+                
+                <% #Convert to a string %>
+                <% txt = p.text %>
+                <% #Convert words with a period that aren't Mr. or Mrs. into new columns %>
+                <% 
+                  txt = txt.gsub(/\b(?!Mr.|Mrs.)([a-z0-9]+\.)/i) do |match|
+                    res = "#{match}</td><td>#{pnum}</td><td>#{lnum}</td></tr><tr><td>"
+                    lnum += 1
+                    res
+                  end
+                %>
+                <%= txt.html_safe %>
+                <% pnum += 1 %>
+              <% end %>
+            </td>
+            <td><%= pnum %></td>
+            <td><%= lnum %></td>
+          </tr>
+        </table>
+    <% end %>
+   
+  <% end %>
+</div>
+
+
+<div class="jap">
+  <% @jap.each_page_on_spine do |page| %>
+    <% ch1 = page.content_document.nokogiri.css('section.chapter') %>
+      <% if ch1.empty? || !ch1.css('.cover').empty? %>
+        <%#Do nothing for metadata and cover pages%>
+      <% else %>  
+        <%#Start code for chapter one %>
+        <%#Get p nodes, set paragraph # = 1 and line number = 1%>
+        <% text = ch1.css('p') %>
+        <% pnum = 1 %>
+        <% lnum = 1 %>
+        <table>
+          <tr>
+            <th>Item</th>
+            <th>Paragraph No.</th>
+            <th>Line No.</th>
+          </tr>
+          <tr>
+            <td> 
+            <% text.each do |p| %>
+              <%# p's contain children text elements and children furigana elements wrapped in ruby and rt tags. %>
+              <% p.children.each do |line| %>
+                <%# i designates the line count for each paragraph%>
+                <% i=0 %>
+                <% if line.children().css('rt').empty? %>
+                  <%# Parse non-furigana children for periods, create rows/increase rowcount %>
+                  <% if line.text.include?("。")%>
+                    <% 
+                      result = line.text.gsub('。') do |match|
+                        res = "#{match}</td><td>#{pnum}</td><td>#{lnum}</td></tr><tr><td>"
+                        lnum += 1
+                        res
+                      end
+                    %>
+                    <%= result.html_safe %>
+                  <% else %>
+                    <%= line.text %>
+                  <% end %>
+                
+                  <% i += 1 %>
+                <% else %>
+                  <%# Put the furigana in the href link %>
+                  <a href="<%= line.children().css('rt')[i] %>"><%= line.children[i].text %></a> 
+                   <% i += 1 %>
+                <% end %>
+              <% end %> 
+              <% pnum += 1 %>
+            <% end %>
+
+            </td>
+            <td><%= pnum %></td>
+            <td><%= lnum %></td>
+          </tr>
+        </table>
+      <%#End code for chapter 1%>
+      <% end %>
+  <% end %>
+
+</div>
+
